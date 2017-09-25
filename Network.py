@@ -43,25 +43,27 @@ predict_muti = tf.transpose(predict_t)
 predict = tf.transpose(tf.nn.relu(tf.matmul(predict_muti, w4) + b4))
 
 
-Si = predict / output
-Vi = tf.log(Si)
-meanV, varV = tf.nn.moments(Vi, axes=[1])
+error = tf.square(predict - output)
 
-
-error = (tf.add(tf.square(meanV), varV)) ** 0.5
+# Si = predict / output
+# Vi = tf.log(Si)
+# meanV, varV = tf.nn.moments(Vi, axes=[1])
+#
+#
+# error = (tf.add(tf.square(meanV), varV)) ** 0.5
 
 
 init = tf.global_variables_initializer()
 sess = tf.Session()
 sess.run(init)
 print(sess.run(predict_t))
-print(sess.run(output))
-print(sess.run(error))
+#print(sess.run(output))
+#print(sess.run(error))
 
 
 optimizer = tf.train.GradientDescentOptimizer(0.001).minimize(error)
 for i in range(2000):
     sess.run(optimizer)
-    print(sess.run(predict))
-print(sess.run(error))
-print(sess.run(predict))
+    #print(sess.run(predict))
+#print(sess.run(error))
+#print(sess.run(predict))
