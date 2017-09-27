@@ -23,11 +23,16 @@ def fill_missing(data, method='mean'):
     return data
 
 
+
 def normalize(data, is_max=False):
+    maxnum = []
+    for i in range((len(data))):
+        maxnum.append(max(data[i]))
+
     for i in range(len(data)):
         for j in range(len(data[i])):
             if is_max:
-                data[i][j] /= max(data[i])
+                data[i][j] /= maxnum[i]
             else:
-                data[i][j] /= 100.0
+                data[i][j] /= 50.0
     return data
