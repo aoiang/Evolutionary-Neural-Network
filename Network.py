@@ -1,97 +1,104 @@
-import Data_preprocessing as dp
-import Data_reader as reader
 import tensorflow as tf
-import numpy as np
-
-def get_data():
-    data = reader.data_formatting(reader.data_extracter())
-    feature, label = reader.feature_extracter(data, ['PATH_LTH', 'FREQUENCY', 'RR_01', 'A_01'], has_name=False)
-    feature = reader.data_formatting(feature)
-    label = reader.data_formatting(label)
-    feature = (dp.fill_missing(feature, method='mean'))
-    label = (dp.fill_missing(label, method='mean'))
-    feature = dp.normalize(feature, is_max=True)
-    label = dp.normalize(label, is_max=True)
-    return np.transpose(np.array(feature)), np.transpose(np.array(label))
+import Input as inputs
+import random
 
 
-def weight_init(shape, names=''):
-    init = tf.random_uniform(shape)
-    return tf.Variable(init, name=names)
+class Network():
+
+    def __init__(self, w, b):
+        self.set_w(w)
+        self.set_b(b)
+
+    def set_w(self, w):
+        self.w = w
+
+    def set_b(self, b):
+        self.b = b
+
+    def get_w(self):
+        return self.w
+
+    def get_b(self):
+        return self.b
+
+    def get_all(self):
+        return self.w, self.b
 
 
-def bias_variable(shape):
-  initial = tf.constant(0.1, shape=shape)
-  return tf.Variable(initial)
+class Population():
+
+    def __init__(self, total_num, feature_number, output_num, auto_generate=True):
+        self.total = total_num
+        self.feature_number = feature_number
+        self.output_num = output_num
+        self.nets = [0] * total_num
+        if auto_generate:
+            for i in range(total_num):
+                self.nets[i] = self.network_generator()
+
+    def weight_init(self, shape):
+        init = tf.random_uniform(shape)
+        return tf.Variable(init)
+
+    def bias_variable(self, shape):
+        initial = tf.constant(0.1, shape=shape)
+        return tf.Variable(initial)
+
+    def network_generator(self, layer_num=3):
+        node = [0] * (layer_num - 2)
+        for i in range(layer_num - 2):
+            node[i] = random.randint(2, 10)
+        w = [0] * (layer_num - 1)
+        b = [0] * (layer_num - 1)
+        w[0] = self.weight_init((self.feature_number, node[0]))
+        for i in range(1, layer_num - 2):
+            w[i] = self.weight_init((node[i - 1], node[i]))
+        w[layer_num - 2] = self.weight_init((node[-1], self.output_num))
+        for i in range(layer_num - 2):
+            b[i] = self.bias_variable((node[i],))
+        b[-1] = self.bias_variable((self.output_num,))
+        net = Network(w, b)
+        return net
 
 
-w1 = weight_init((3, 20), names='w1')
-w2 = weight_init((20, 1), names='w2')
+feature, label = inputs.Input().data_generator()
+
+def optimizer(feature, label, nets):
+    for i in range(len(nets)):
+        input = tf.placeholder(tf.float32)
+        output = tf.placeholder(tf.float32)
+        w, b = nets[i].get_all()
+        print(i)
+        l1 = tf.nn.tanh(tf.matmul(input, w[0]) + b[0])
+        predict = tf.nn.tanh(tf.matmul(l1, w[1]) + b[1])
+        error = tf.losses.mean_squared_error(predict, output)
+        init = tf.global_variables_initializer()
+        sess = tf.Session()
+        sess.run(init)
+        optimizer = tf.train.GradientDescentOptimizer(0.1).minimize(error)
+        for j in range(20000):
+            sess.run(optimizer, feed_dict={input: feature[10:82], output: label[10:82]})
+        print(sess.run(predict, feed_dict={input: feature[:10], output: label[:10]}), "kkkkkk\n")
+        print(label[:10])
+        nets[i].set_w(w)
+        nets[i].set_b(b)
+    return nets
 
 
-b1 = bias_variable((20,))
-b2 = bias_variable((1,))
-
-
-feature, label = get_data()
-print(feature)
-#print(label)
-
-# input = tf.placeholder(tf.float32)
-# output = tf.placeholder(tf.float32)
-
-input = tf.constant(feature, dtype=tf.float32, name='input')
-output = tf.constant(label, dtype=tf.float32, name='output')
-
-# test_in = tf.constant(label, dtype=tf.float32, name='output')[70:]
-# test_out = tf.constant(label, dtype=tf.float32, name='output')[70:]
-
-
-
-
-
-l1 = tf.nn.tanh(tf.matmul(input, w1) + b1, name='hadden_layer')
-l2 = tf.nn.tanh(tf.matmul(l1, w2) + b2, name='out_layer')
-
+optimizer(feature, label, Population(2, 3, 1).nets)
 
 
 
-# predict_t = tf.nn.sigmoid(tf.matmul(l2, w3) + b3)
-# predict_muti = tf.transpose(predict_t)
-# predict = tf.transpose(tf.nn.sigmoid(tf.matmul(predict_muti, w4) + b4))
 
 
-error = tf.losses.mean_squared_error(l2, output)
-
-# Si = predict / output
-# Vi = tf.log(Si)
-# meanV, varV = tf.nn.moments(Vi, axes=[1])
-#
-#
-# error = (tf.add(tf.square(meanV), varV)) ** 0.5
 
 
-init = tf.global_variables_initializer()
-sess = tf.Session()
-sess.run(init)
+
+
+
+
+
 # writer = tf.summary.FileWriter('./resource')
 # writer.add_graph(sess.graph)
-
-print(sess.run(tf.shape(output)))
-# print(sess.run(error))
-
-
-optimizer = tf.train.GradientDescentOptimizer(0.1).minimize(error)
-for i in range(10000):
-    sess.run(optimizer)
-
-    #print(sess.run(w2))
-
-
-# sess.run(optimizer, feed_dict={input: feature[70:], output: label[70:]})
-for i in range(86):
-    print(sess.run(output[i]), sess.run(l2[i]))
-# print(sess.run(output))
-# print(sess.run(l2))
 
 
