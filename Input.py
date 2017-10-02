@@ -17,9 +17,11 @@ class Input():
         self.feature = dp.normalize(self.feature, is_max=True)
         self.label = dp.normalize(self.label, is_max=True)
 
-    def data_generator(self):
+    def data_generator(self, is_split=True):
         feature = np.transpose(np.array(self.feature))
-        label =  np.transpose(np.array(self.label))
+        label = np.transpose(np.array(self.label))
+        if is_split:
+            return feature[10:82], label[10:82], feature[:10], label[:10]
         return feature, label
 
 

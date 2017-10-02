@@ -23,7 +23,6 @@ def fill_missing(data, method='mean'):
     return data
 
 
-
 def normalize(data, is_max=False):
     maxnum = []
     for i in range((len(data))):
@@ -36,3 +35,19 @@ def normalize(data, is_max=False):
             else:
                 data[i][j] /= 50.0
     return data
+
+def kill_missing(feature, label):
+    i = 0
+    j = 0
+    while 1:
+        if type(label[i][j]) is not float or type(feature[-1][j]) is not float:
+            for r in range(len(feature)):
+                del feature[r][j]
+            del label[i][j]
+            j -= 1
+        if j + 1 == len(label[i]):
+            break
+        j += 1
+    return feature, label
+
+
