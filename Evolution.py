@@ -21,7 +21,6 @@ class Evolution():
             w, b = nets[i].get_all()
             print(i)
             l = [0] * len(w)
-            #print(len(w))
             for j in range(len(w)):
                 if j == 0:
                     l[j] = tf.nn.tanh(tf.matmul(input, w[j]) + b[j])
@@ -44,7 +43,7 @@ class Evolution():
 
         return nets
 
-    def network_optimizer(self, train_feature, train_label, test_feature, test_label, net, step):
+    def network_optimizer(self, train_feature, train_label, test_feature, test_label, net, step, final=False):
         input = tf.placeholder(tf.float32)
         output = tf.placeholder(tf.float32)
         #print(net)
@@ -53,13 +52,32 @@ class Evolution():
         for j in range(len(w)):
             #print(j,'dfsfadgdasg')
             if j == 0:
-                l[j] = tf.nn.tanh(tf.matmul(input, w[j]) + b[j])
+                if j in net.get_relu():
+                    if final:
+                        print('goes relu!!!')
+                    l[j] = tf.nn.relu(tf.matmul(input, w[j]) + b[j])
+                elif j in net.get_elu():
+                    l[j] = tf.nn.elu(tf.matmul(input, w[j]) + b[j])
+                else:
+                    l[j] = tf.nn.tanh(tf.matmul(input, w[j]) + b[j])
             if j > 0 and j < len(w) - 1:
-                l[j] = tf.nn.tanh(tf.matmul(l[j - 1], w[j]) + b[j])
+                if j in net.get_relu():
+                    if final:
+                        print('goes relu!!!')
+                    l[j] = tf.nn.relu(tf.matmul(l[j - 1], w[j]) + b[j])
+                elif j in net.get_elu():
+                    l[j] = tf.nn.elu(tf.matmul(l[j - 1], w[j]) + b[j])
+                else:
+                    l[j] = tf.nn.tanh(tf.matmul(l[j - 1], w[j]) + b[j])
             if j == len(w) - 1:
-                #print(tf.shape(l[j - 1]))
-                #print(tf.shape(w[j]))
-                predict = tf.nn.tanh(tf.matmul(l[j - 1], w[j]) + b[j])
+                if j in net.get_relu():
+                    if final:
+                        print('goes relu!!!')
+                    predict = tf.nn.relu(tf.matmul(l[j - 1], w[j]) + b[j])
+                elif j in net.get_elu():
+                    predict = tf.nn.elu(tf.matmul(l[j - 1], w[j]) + b[j])
+                else:
+                    predict = tf.nn.tanh(tf.matmul(l[j - 1], w[j]) + b[j])
         error = tf.losses.mean_squared_error(predict, output)
         init = tf.global_variables_initializer()
         sess = tf.Session()
@@ -72,13 +90,14 @@ class Evolution():
             sess.run(optimizer, feed_dict={input: train_feature, output: train_label})
         net_error = sess.run(error, feed_dict={input: test_feature, output: test_label})
         error_diff = sess.run(init_error - error, feed_dict={input: test_feature, output: test_label})
-        #print(sess.run(error, feed_dict={input: test_feature, output: test_label}))
+        if(final):
+            return sess.run(w), sess.run(b), net_error, error_diff, sess.run(predict, feed_dict={input: test_feature, output: test_label})*50, test_label*50
         return sess.run(w), sess.run(b), net_error, error_diff
 
-    def net_updated(self, net, w, b, net_error=0, error_diff=0):
+    def net_updated(self, net, w, b, net_error=0, error_diff=0, init=False):
         try:
-            net.set_w(w)
-            net.set_b(b)
+            net.set_w(w, init)
+            net.set_b(b, init)
             net.set_error(net_error)
             net.set_error_diff(error_diff)
         except:
@@ -111,6 +130,7 @@ class Evolution():
         rank = 1
         size = 0
         while 1:
+            #print('kjkjlkjk', size)
             if nets[i].get_rank() == rank:
                 sortednets.append(nets[i])
                 rank += 1
@@ -159,7 +179,7 @@ class Evolution():
     def node_addition(self, net, is_random=True, to_add_num=0, layer=3):
         w, b = net.get_all()
         if is_random:
-            to_add_num = random.randint(1, 8)
+            to_add_num = random.randint(1, 3)
         new_w = []
         new_b = []
         #print(w)
@@ -184,7 +204,6 @@ class Evolution():
             else:
                 new_w.append(sess.run(w)[i])
                 new_b.append(sess.run(b)[i])
-
         return new_w, new_b
 
 
@@ -195,79 +214,179 @@ def probabality_generator(max=3):
         if get_prob > sum(range(p)) and get_prob <= sum(range(p + 1)):
              return max - p
 
+def get_rid_of_same(populations):
+    print(len(populations))
+    for i in range(len(populations)):
+        for j in range(i+1, len(populations)):
+            if(populations[i].get_rank() == populations[j].get_rank()):
+                print("delete", i)
+                populations.pop(i)
+                i -= 1
+                print(len(populations))
+    return populations
+
+
+def evolve(population_nums, generations, tra_feature, tra_label, vaildation_feature, vaildation_label, test_feature, test_label, type='optimal', ):
+
+    populations = Population(population_nums, 6, 1).nets
+    populations = Evolution(population_nums).population_optimizer(tra_feature, tra_label, vaildation_feature, vaildation_label, populations, 50)
+    populations = Evolution(population_nums).state_marker(populations)
+    populations = Evolution(population_nums).rank(populations)
+    populations = get_rid_of_same(populations)
+    populations = Evolution(population_nums).sort_nets(populations)
 
 
 
-def evolve():
 
-    tra_feature, tra_label, test_feature, test_label = inputs.Input().data_generator()
-    populations = Population(3, 3, 1).nets
-    populations = Evolution(3).population_optimizer(tra_feature, tra_label, test_feature, test_label, populations, 20)
-    populations = Evolution(3).state_marker(populations)
-    populations = Evolution(3).rank(populations)
-    populations = Evolution(3).sort_nets(populations)
-
-
-
-
-    #temp_net = Population(1, 3, 1).nets[0]
-    for generation in range(1000):
-
-        i = probabality_generator(3)
-        populations = Evolution(3).rank(populations)
-        populations = Evolution(3).sort_nets(populations)
+    for generation in range(generations):
+        if generation%10 == 0:
+            for i in range(len(populations)):
+                print('ididididididididid', populations[i].get_id())
+        if type=='random':
+            i = probabality_generator(max=population_nums)
+        if type=='optimal':
+            i = 0
+        populations = Evolution(population_nums).rank(populations)
+        populations = Evolution(population_nums).sort_nets(populations)
 
         replacement = 0
 
+
         print('error of network ', i, 'in generation ', generation + 1, 'is ', populations[i].get_error())
-        w, b, e, r = Evolution().network_optimizer(tra_feature, tra_label, test_feature, test_label, populations[i], 20)
-        if r > 0.001:
+        w, b, e, r = Evolution().network_optimizer(tra_feature, tra_label, vaildation_feature, vaildation_label, populations[i], 30)
+        if r > 0.0005:
             #print(r)
             print('update the weight for network ', i, 'in generation', generation+1)
             Evolution().net_updated(populations[i], w, b, e, r)
+            print('\n')
+
+
+
         else:
+            for layer in range(2, populations[i].get_layer() + 1):
+                act_change = 0
+                if layer-2 in populations[i].get_elu():
+                    act_change = 1
+                    populations[i].set_elu(layer - 2, op='remove')
+                if layer-2 in populations[i].get_relu():
+                    populations[i].set_relu(layer - 2, op='remove')
+                    w, b, e, r = Evolution().network_optimizer(tra_feature, tra_label, vaildation_feature, vaildation_label, populations[i], 40)
+                    if r > 0.0005:
+                        # print(r)
+                        print('act function changes to tanh network ', i,'at layer', layer, 'in generation', generation+1)
+                        Evolution().net_updated(populations[i], w, b, e, r)
+                        print('\n')
+                        replacement = 1
+                        break
+                populations[i].set_relu(layer-2)
+                w, b, e, r = Evolution().network_optimizer(tra_feature, tra_label, vaildation_feature, vaildation_label, populations[i], 40)
+                if r > 0.0005:
+                    print('act function changes to relu network ', i,'at layer', layer, 'in generation', generation+1)
+                    Evolution().net_updated(populations[i], w, b, e, r)
+                    print('\n')
+                    replacement = 1
+                    break
+                else:
+                    if act_change == 1:
+                        populations[i].set_elu(layer - 2)
+                    populations[i].set_relu(layer-2, op='remove')
+
+            if replacement == 1:
+                print('\n')
+                continue
+
+            for layer in range(2, populations[i].get_layer() + 1):
+                act_change = 0
+                if layer-2 in populations[i].get_relu():
+                    act_change = 1
+                    populations[i].set_relu(layer - 2, op='remove')
+                if layer-2 in populations[i].get_elu():
+                    populations[i].set_elu(layer - 2, op='remove')
+                    w, b, e, r = Evolution().network_optimizer(tra_feature, tra_label, vaildation_feature, vaildation_label, populations[i], 50)
+                    if r > 0.0005:
+                        # print(r)
+                        print('act function changes to tanh network ', i,'at layer', layer, 'in generation', generation+1)
+                        Evolution().net_updated(populations[i], w, b, e, r)
+                        print('\n')
+                        replacement = 1
+                        break
+
+                populations[i].set_elu(layer-2)
+                #print(populations[i].get_elu())
+                w, b, e, r = Evolution().network_optimizer(tra_feature, tra_label, vaildation_feature, vaildation_label, populations[i], 50)
+                if r > 0.0005:
+                    print('act function changes to elu network ', i,'at layer', layer, 'in generation', generation+1)
+                    Evolution().net_updated(populations[i], w, b, e, r)
+                    print('\n')
+                    replacement = 1
+                    break
+                else:
+                    if act_change == 1:
+                        populations[i].set_relu(layer - 2)
+                    populations[i].set_elu(layer-2, op='remove')
+
+            if replacement == 1:
+                print('\n')
+                continue
+
             # TODO: SA training and Replacement
             for layer in range(2, populations[i].get_layer() + 1):
-                print(layer, populations[i].get_layer())
+                #print(layer, populations[i].get_layer())
                 w, b = Evolution().node_deletion(populations[i], layer=layer)      # delete nodes
-                temp_net = Population(1, 3, 1, layer_num=populations[i].get_layer()+1, random_layer=False).nets[0]
-                Evolution().net_updated(temp_net, w, b)
-                #print(populations[i].get_w())
-                w, b, e, r = Evolution().network_optimizer(tra_feature, tra_label, test_feature, test_label, temp_net, 40 * (generation+1))
-                if e < populations[-1].get_error():
+                temp_net = Population(1, 6, 1, layer_num=populations[i].get_layer()+1, random_layer=False).nets[0]
+                Evolution().net_updated(temp_net, w, b, init=True)
+                temp_net.set_relu(populations[i].get_relu(), copy=True)
+                temp_net.set_elu(populations[i].get_elu(), copy=True)
+                w, b, e, r = Evolution().network_optimizer(tra_feature, tra_label, vaildation_feature, vaildation_label, temp_net, random.randint(50, 60) * generation)
+                if e < populations[-1].get_error() and not check_same(temp_net, populations):
                     print('node deleted for network ', i,'at layer', layer, 'in generation', generation+1)
                     #Evolution().net_updated(populations[-1], w, b, e, r)
                     Evolution().net_updated(temp_net, w, b, e, r)
+                    temp_net.set_id(populations[i].get_id())
                     populations.pop()
                     populations.append(temp_net)
                     replacement = 1
-                    #print(populations[-1].get_w())
                     break
+
             if replacement == 1:
+                print('\n')
                 continue
 
             for layer in range(2, populations[i].get_layer() + 1):
                 # TODO: connection deletion
-                #print(layer, populations[i].get_layer())
-                #print(populations[i].get_w())
                 w, b = Evolution().node_addition(populations[i], layer=layer)    # add nodes
-                temp_net = Population(1, 3, 1, layer_num=populations[i].get_layer() + 1, random_layer=False).nets[0]
-                Evolution().net_updated(temp_net, w, b)
-                w, b, e, r = Evolution().network_optimizer(tra_feature, tra_label, test_feature, test_label, temp_net, 40 * (generation+1))
-                if e < populations[-1].get_error():
+                temp_net = Population(1, 6, 1, layer_num=populations[i].get_layer() + 1, random_layer=False).nets[0]
+                Evolution().net_updated(temp_net, w, b, init=True)
+                temp_net.set_relu(populations[i].get_relu(), copy=True)
+                temp_net.set_elu(populations[i].get_elu(), copy=True)
+                w, b, e, r = Evolution().network_optimizer(tra_feature, tra_label, vaildation_feature, vaildation_label, temp_net, random.randint(50, 60) * generation)
+                if e < populations[-1].get_error() and not check_same(temp_net, populations):
                     print('node added for network ', i, 'at layer', layer, 'in generation', generation + 1)
                     #Evolution().net_updated(populations[-1], w, b, e, r)
                     Evolution().net_updated(temp_net, w, b, e, r)
+                    temp_net.set_id(populations[i].get_id())
                     populations.pop()
                     populations.append(temp_net)
                     replacement = 1
-                    #print(populations[i].get_w())
                     break
             if replacement == 0:
                 print('no changed')
 
 
 
+            print('\n')
+
+    populations = Evolution(population_nums).rank(populations)
+    populations = Evolution(population_nums).sort_nets(populations)
+    return populations[0]
+
+
+
+def check_same(net, populations):
+    for err in range(len(populations)):
+        if net.get_error() == populations[err].get_error():
+            return True
+    return False
 
 
 
@@ -277,15 +396,3 @@ def evolve():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-evolve()

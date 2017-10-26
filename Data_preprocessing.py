@@ -23,24 +23,30 @@ def fill_missing(data, method='mean'):
     return data
 
 
-def normalize(data, is_max=False):
+def normalize(data, type='constant'):
     maxnum = []
+    minnum = []
     for i in range((len(data))):
         maxnum.append(max(data[i]))
-
+        minnum.append(min(data[i]))
     for i in range(len(data)):
         for j in range(len(data[i])):
-            if is_max:
+            if type == 'max':
                 data[i][j] /= maxnum[i]
-            else:
+            if type == 'constant':
                 data[i][j] /= 50.0
+            if type == 'normal':
+                data[i][j] -= minnum[i]
+                data[i][j] /= (maxnum[i] - minnum[i])
     return data
+
+
 
 def kill_missing(feature, label):
     i = 0
     j = 0
     while 1:
-        if type(label[i][j]) is not float or type(feature[-1][j]) is not float:
+        if type(label[i][j]) is not float or type(feature[-1][j]) is not float or feature[-1][j] == 0 or label[i][j] == 0:
             for r in range(len(feature)):
                 del feature[r][j]
             del label[i][j]

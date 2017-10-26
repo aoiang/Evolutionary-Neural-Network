@@ -15,11 +15,14 @@ class Network():
     __w = None
     __b = None
     __nodes = [0] * 12
+    __relu = []
+    __elu = []
 
-    def __init__(self, w, b):
+    def __init__(self, w, b, id):
 
         self.init_w(w)
         self.init_b(b)
+        self.init_id(id)
 
     def init_w(self, w):
         self.w = w
@@ -27,20 +30,71 @@ class Network():
     def init_b(self, b):
         self.b = b
 
-    def set_w(self, w):
-        #print('setW runs')
-        self.__nodes = [0] * 12
-        for i in range(len(w)):
-            if i == 0:
-                self.__nodes[0] = np.shape(w[i])[0]
-            ini = tf.constant(w[i], shape=np.shape(w[i]))
-            self.w[i] = tf.Variable(ini)
-            self.__nodes[i+1] = np.shape(w[i])[1]
+    def init_id(self, id):
+        self.id = id
 
-    def set_b(self, b):
-        for i in range(len(b)):
-            ini = tf.constant(b[i], shape=np.shape(b[i]))
-            self.b[i] = tf.Variable(ini)
+    def get_id(self):
+        return self.id
+
+    def set_id(self, id):
+        self.id = id
+
+    def set_elu(self, elu, op='append', copy=False):
+
+        if copy:
+            self.__elu.extend(elu)
+        else:
+            if op == 'append':
+                self.__elu.append(elu)
+            if op == 'remove':
+                self.__elu.remove(elu)
+        self.__elu = list(set(self.__elu))
+
+    def set_relu(self, relu, op='append', copy=False):
+        if copy:
+            self.__elu.extend(relu)
+        else:
+            if op == 'append':
+                self.__relu.append(relu)
+            if op == 'remove':
+                self.__relu.remove(relu)
+        self.__relu = list(set(self.__relu))
+
+    def get_relu(self):
+        return self.__relu
+
+    def get_elu(self):
+        return self.__elu
+
+
+    def set_w(self, w, init=False):
+        self.__nodes = [0] * 12
+        if not init:
+            for i in range(len(w)):
+                if i == 0:
+                    self.__nodes[0] = np.shape(w[i])[0]
+                ini = tf.constant(w[i], shape=np.shape(w[i]))
+                self.w[i] = tf.Variable(ini)
+                self.__nodes[i+1] = np.shape(w[i])[1]
+        else:
+            for i in range(len(w)):
+                if i == 0:
+                    self.__nodes[0] = np.shape(w[i])[0]
+                ini = tf.random_uniform(shape=np.shape(w[i]))
+                self.w[i] = tf.Variable(ini)
+                self.__nodes[i + 1] = np.shape(w[i])[1]
+
+
+    def set_b(self, b, init=False):
+        if not init:
+            for i in range(len(b)):
+                ini = tf.constant(b[i], shape=np.shape(b[i]))
+                self.b[i] = tf.Variable(ini)
+        else:
+            for i in range(len(b)):
+                ini = tf.constant(0.1, shape=np.shape(b[i]))
+                self.b[i] = tf.Variable(ini)
+
 
     def get_w(self):
         return self.w
@@ -94,7 +148,7 @@ class Population():
         self.nets = [0] * total_num
         if auto_generate:
             for i in range(total_num):
-                self.nets[i] = self.network_generator(layer_num, random_layer)
+                self.nets[i] = self.network_generator(i, layer_num, random_layer)
 
     def weight_init(self, shape):
         init = tf.random_uniform(shape)
@@ -104,9 +158,9 @@ class Population():
         initial = tf.constant(0.1, shape=shape)
         return tf.Variable(initial)
 
-    def network_generator(self, layer_num=4, random_layer=False):
+    def network_generator(self, id, layer_num=4, random_layer=False):
         if random_layer:
-            layer_num = random.randint(3, 8)
+            layer_num = random.randint(3, 5)
         node = [0] * (layer_num - 2)
         for i in range(layer_num - 2):
             node[i] = random.randint(2, 10)
@@ -119,7 +173,7 @@ class Population():
         for i in range(layer_num - 2):
             b[i] = self.bias_variable((node[i],))
         b[-1] = self.bias_variable((self.output_num,))
-        net = Network(w, b)
+        net = Network(w, b, id)
         return net
 
 
