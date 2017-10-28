@@ -19,7 +19,7 @@ class Evolution():
             input = tf.placeholder(tf.float32)
             output = tf.placeholder(tf.float32)
             w, b = nets[i].get_all()
-            print(i)
+            print('generating', i, 'networks')
             l = [0] * len(w)
             for j in range(len(w)):
                 if j == 0:
@@ -91,7 +91,7 @@ class Evolution():
         net_error = sess.run(error, feed_dict={input: test_feature, output: test_label})
         error_diff = sess.run(init_error - error, feed_dict={input: test_feature, output: test_label})
         if(final):
-            return sess.run(w), sess.run(b), net_error, error_diff, sess.run(predict, feed_dict={input: test_feature, output: test_label})*50, test_label*50
+            return sess.run(w), sess.run(b), net_error, error_diff, sess.run(predict, feed_dict={input: test_feature, output: test_label}), test_label
         return sess.run(w), sess.run(b), net_error, error_diff
 
     def net_updated(self, net, w, b, net_error=0, error_diff=0, init=False):
@@ -239,9 +239,9 @@ def evolve(population_nums, generations, tra_feature, tra_label, vaildation_feat
 
 
     for generation in range(generations):
-        if generation%10 == 0:
-            for i in range(len(populations)):
-                print('ididididididididid', populations[i].get_id())
+        # if generation%10 == 0:
+        #     for i in range(len(populations)):
+        #         print('ididididididididid', populations[i].get_id())
         if type=='random':
             i = probabality_generator(max=population_nums)
         if type=='optimal':

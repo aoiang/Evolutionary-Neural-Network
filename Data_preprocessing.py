@@ -1,3 +1,5 @@
+import random
+
 def cal_mean(data):
     mean_num = []
     for i in range(len(data)):
@@ -23,7 +25,7 @@ def fill_missing(data, method='mean'):
     return data
 
 
-def normalize(data, type='constant'):
+def normalize(data, type='constant', scale=10):
     maxnum = []
     minnum = []
     for i in range((len(data))):
@@ -34,7 +36,7 @@ def normalize(data, type='constant'):
             if type == 'max':
                 data[i][j] /= maxnum[i]
             if type == 'constant':
-                data[i][j] /= 50.0
+                data[i][j] /= scale
             if type == 'normal':
                 data[i][j] -= minnum[i]
                 data[i][j] /= (maxnum[i] - minnum[i])
@@ -57,3 +59,9 @@ def kill_missing(feature, label):
     return feature, label
 
 
+def shuffle(data):
+    attribute = [data[0]]
+    data.pop(0)
+    random.shuffle(data)
+    attribute.extend(data)
+    return attribute
